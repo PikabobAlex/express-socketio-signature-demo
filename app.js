@@ -1,13 +1,28 @@
 const express = require("express");
 const app = express();
+const http = require("http").createServer(app);
+const io = require("socket.io")(http);
+
+io.on("connection", (socket) => {
+  console.log("a user connected");
+
+  socket.on("disconnect", () => {
+    console.log("user disconnected");
+  });
+
+  socket.on("signature", (msg) => {
+    console.log("message: " + msg);
+    io.emit("unity signature", msg);
+  });
+});
+
 const port = process.env.PORT || 3001;
 
-app.get("/", (req, res) => res.type('html').send(html));
+app.get("/", (req, res) => res.type("html").send(html));
 
-const server = app.listen(port, () => console.log(`Example app listening on port ${port}!`));
-
-server.keepAliveTimeout = 120 * 1000;
-server.headersTimeout = 120 * 1000;
+http.listen(port, () => {
+  console.log(`listening on *:${port}`);
+});
 
 const html = `
 <!DOCTYPE html>
@@ -15,15 +30,20 @@ const html = `
   <head>
     <title>Hello from Render!</title>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
     <script>
-      setTimeout(() => {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          disableForReducedMotion: true
-        });
-      }, 500);
+      const socket = io();
+      const form = document.getElementById("form");
+      const input = document.getElementById("input");
+      const messages = document.getElementById("messages");
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (input.value) {
+          socket.emit("signature", input.value);
+          input.value = "";
+        }
+      });
     </script>
     <style>
       @import url("https://p.typekit.net/p.css?s=1&k=vnd5zic&ht=tk&f=39475.39476.39477.39478.39479.39480.39481.39482&a=18673890&app=typekit&e=css");
@@ -50,12 +70,26 @@ const html = `
         margin-right: -50%;
         transform: translate(-50%, -50%);
       }
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+      }
+      li {
+        margin-top: 10px;
+      }
+      input {
+        margin-right: 10px;
+      }
     </style>
   </head>
   <body>
     <section>
-      Hello from Render!
+      <ul id="messages"></ul>
+      <form id="form">
+        <input autocomplete="off" id="input" /><button>Send</button>
+      </form>
     </section>
   </body>
 </html>
-`
+`;
